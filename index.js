@@ -57,11 +57,14 @@ async function run() {
       res.send({ token })
     })
 
+
     // Courses collection apis
     app.get('/courses', async (req, res) => {
         const result = await courseCollection.find().toArray();
         res.send(result);
       })
+
+
     
     // user collection apis
     app.get('/users',  async (req, res) => {
@@ -83,6 +86,21 @@ async function run() {
     });
 
 
+
+    // security layer for admin
+    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const result = { admin: user?.role === 'admin' }
+      res.send(result);
+    })
+
     app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
@@ -97,34 +115,61 @@ async function run() {
 
     })
 
+    app.delete('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
+
 
     // selectedClasses collection apis
-    app.get('/selectedClasses', verifyJWT, async (req, res) => {
-    const email = req.query.email;
-
-    if (!email) {
-        res.send([]);
-    }
-
-    const decodedEmail = req.decoded.email;
-    if (email !== decodedEmail) {
-        return res.status(403).send({ error: true, message: 'forbidden access' })
-    }
-
-    const query = { email: email };
-    const result = await selectedClassCollection.find(query).toArray();
-    res.send(result);
+    app.get('/selectedClasses/:studentEmail', async (req, res) => {
+      try {
+        const studentEmail = req.params.studentEmail;
+        const query = { selectedByStudent: studentEmail };
+        const result = await courseCollection.find(query).toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
     });
     
     app.post('/selectedClasses', async (req, res) => {
-        const item = req.body;
-        const result = await selectedClassCollection.insertOne(item);
-        res.send(result);
-      });
+      try {
+        const studentEmail = req.body.studentEmail;
+        const classId = req.body.classId;
+        console.log(studentEmail, classId);
+    
+        // Convert classId to ObjectID
+        const ObjectId = require('mongodb').ObjectId;
+        const selectedClass = await courseCollection.findOne({ _id: new ObjectId(classId) });
+    
+        if (!selectedClass) {
+          return res.status(404).json({ error: 'Class not found' });
+        }
+    
+        // Check if the student has already selected this class
+        if (selectedClass.selectedByStudent.includes(studentEmail)) {
+          return res.status(400).json({ error: 'Class already selected by this student' });
+        }
+    
+        // Update the selectedByStudent array with the student's email
+        selectedClass.selectedByStudent.push(studentEmail);
+    
+        // Save the updated class
+        await courseCollection.updateOne({ _id: new ObjectId(classId) }, { $set: selectedClass });
+    
+        res.json({ message: 'Class selected successfully' });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
 
     app.delete('/selectedClasses/:id', async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
+      const query = { _id: id };
       const result = await selectedClassCollection.deleteOne(query);
       res.send(result);
     });
