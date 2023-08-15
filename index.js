@@ -167,12 +167,87 @@ async function run() {
       }
     });
 
-    app.delete('/selectedClasses/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: id };
-      const result = await selectedClassCollection.deleteOne(query);
-      res.send(result);
+    app.post('/removeSelectedClass', async (req, res) => {
+      try {
+        const studentEmail = req.body.studentEmail;
+        const classId = req.body.classId;
+    
+        // Convert classId to ObjectID
+        const ObjectId = require('mongodb').ObjectId;
+    
+        // Find the selected class
+        const selectedClass = await courseCollection.findOne({ _id: new ObjectId(classId) });
+    
+        if (!selectedClass) {
+          return res.status(404).json({ error: 'Class not found' });
+        }
+    
+        // Check if the student's email is in the selectedByStudent array
+        const studentIndex = selectedClass.selectedByStudent.indexOf(studentEmail);
+        if (studentIndex === -1) {
+          return res.status(400).json({ error: 'Student email not found in selectedByStudent array' });
+        }
+    
+        // Remove the student's email from the selectedByStudent array
+        selectedClass.selectedByStudent.splice(studentIndex, 1);
+    
+        // Update the class document in the collection
+        await courseCollection.updateOne(
+          { _id: new ObjectId(classId) },
+          { $set: { selectedByStudent: selectedClass.selectedByStudent } }
+        );
+    
+        res.json({ message: 'Student removed from class successfully' });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
     });
+
+
+    // EnrolledClasses collection apis
+    app.get('/enrolledClasses/:studentEmail', async (req, res) => {
+      try {
+        const studentEmail = req.params.studentEmail;
+        const query = { enrolledByStudent : studentEmail };
+        const result = await courseCollection.find(query).toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+    
+    app.post('/enrolledClasses', async (req, res) => {
+      try {
+        const studentEmail = req.body.studentEmail;
+        const classId = req.body.classId;
+        console.log(studentEmail, classId);
+    
+        // Convert classId to ObjectID
+        const ObjectId = require('mongodb').ObjectId;
+        const selectedClass = await courseCollection.findOne({ _id: new ObjectId(classId) });
+    
+        if (!selectedClass) {
+          return res.status(404).json({ error: 'Class not found' });
+        }
+    
+        // Check if the student has already selected this class
+        if (selectedClass.enrolledByStudent.includes(studentEmail)) {
+          return res.status(400).json({ error: 'Class already selected by this student' });
+        }
+    
+        // Update the enrolledByStudent array with the student's email
+        selectedClass.enrolledByStudent.push(studentEmail);
+    
+        // Save the updated class
+        await courseCollection.updateOne({ _id: new ObjectId(classId) }, { $set: selectedClass });
+    
+        res.json({ message: 'Class selected successfully' });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });    
 
 
     // Send a ping to confirm a successful connection
