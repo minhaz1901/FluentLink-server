@@ -60,9 +60,16 @@ async function run() {
 
     // Courses collection apis
     app.get('/courses', async (req, res) => {
-        const result = await courseCollection.find().toArray();
+      const query = { isPending: false, isDenied: false }
+        const result = await courseCollection.find(query).toArray();
         res.send(result);
       })
+
+    app.post('/courses', async (req, res) => {
+      const NewCourse = req.body;
+      const result = await courseCollection.insertOne(NewCourse);
+      res.send(result);
+    })
 
 
     
@@ -88,18 +95,39 @@ async function run() {
 
 
     // security layer for admin
-    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
-      const email = req.params.email;
+    // app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+    //   const email = req.params.email;
 
-      if (req.decoded.email !== email) {
-        res.send({ admin: false })
-      }
+    //   if (req.decoded.email !== email) {
+    //     res.send({ admin: false })
+    //   }
 
-      const query = { email: email }
-      const user = await usersCollection.findOne(query);
-      const result = { admin: user?.role === 'admin' }
-      res.send(result);
-    })
+    //   const query = { email: email }
+    //   const user = await usersCollection.findOne(query);
+    //   const result = { admin: user?.role === 'admin' }
+    //   res.send(result);
+    // })
+
+
+    app.get('/users/role/:email', verifyJWT, async (req, res) => {
+        const email = req.params.email;
+    
+        if (req.decoded.email !== email) {
+            res.status(403).send({ message: 'Unauthorized' });
+            return;
+        }
+    
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+        const result = {
+          isAdmin: user?.role === 'admin',
+          isInstructor: user?.role === 'instructor'
+        };
+        console.log(result);
+    
+        res.send(result);
+    });
+    
 
     app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
@@ -113,7 +141,7 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
 
-    })
+    });
 
     app.delete('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
@@ -125,18 +153,18 @@ async function run() {
 
 
     // security layer for instructor
-    app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
-      const email = req.params.email;
+    // app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
+    //   const email = req.params.email;
 
-      if (req.decoded.email !== email) {
-        res.send({ instructor: false })
-      }
+    //   if (req.decoded.email !== email) {
+    //     res.send({ instructor: false })
+    //   }
 
-      const query = { email: email }
-      const user = await usersCollection.findOne(query);
-      const result = { instructor: user?.role === 'instructor' }
-      res.send(result);
-    })
+    //   const query = { email: email }
+    //   const user = await usersCollection.findOne(query);
+    //   const result = { instructor: user?.role === 'instructor' }
+    //   res.send(result);
+    // })
 
     app.patch('/users/instructor/:id', async (req, res) => {
       const id = req.params.id;
