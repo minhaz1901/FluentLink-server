@@ -130,20 +130,6 @@ async function run() {
 
 
 
-    // security layer for admin
-    // app.get('/users/admin/:email', verifyJWT, async (req, res) => {
-    //   const email = req.params.email;
-
-    //   if (req.decoded.email !== email) {
-    //     res.send({ admin: false })
-    //   }
-
-    //   const query = { email: email }
-    //   const user = await usersCollection.findOne(query);
-    //   const result = { admin: user?.role === 'admin' }
-    //   res.send(result);
-    // })
-
 
     app.get('/users/role/:email', verifyJWT, async (req, res) => {
         const email = req.params.email;
@@ -187,20 +173,6 @@ async function run() {
     });
 
 
-
-    // security layer for instructor
-    // app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
-    //   const email = req.params.email;
-
-    //   if (req.decoded.email !== email) {
-    //     res.send({ instructor: false })
-    //   }
-
-    //   const query = { email: email }
-    //   const user = await usersCollection.findOne(query);
-    //   const result = { instructor: user?.role === 'instructor' }
-    //   res.send(result);
-    // })
 
     app.patch('/users/instructor/:id', async (req, res) => {
       const id = req.params.id;
@@ -378,7 +350,10 @@ async function run() {
 
     // allPendingClasses collection apis
     app.get('/allPendingClasses', async (req, res) => {
-      const query = { isPending: true } 
+      const query = {$or: [
+        { isPending: true },
+        { isDenied: true }
+    ] } 
         const result = await courseCollection.find(query).toArray();
         res.send(result);
       })
@@ -391,7 +366,7 @@ async function run() {
         // this option instructs the method to create a document if no documents match the filter
         const options = { upsert: false };
         // create a document that sets the plot of the movie
-        const updateDoc = { $set: { isPending: false, isDenied: false } };
+        const updateDoc = { $set: { isPending: false, isDenied: false, admin_feedback:"" } };
         const updatedCourse = await courseCollection.updateOne(filter, updateDoc, options );
         res.send(updatedCourse);
   
@@ -408,7 +383,17 @@ async function run() {
       const updatedCourse = await courseCollection.updateOne(filter, updateDoc, options );
       res.send(updatedCourse);
 
-
+  });
+    // feedback collection apis
+    app.put('/feedback/:courseId', async (req, res) => {
+      const courseId = req.params.courseId;
+      const feedback = req.body.admin_feedback; // Assuming the key in the object is "admin_feedback"
+      console.log(feedback);
+      const filter = { _id: new ObjectId(courseId) };
+      const options = { upsert: true };
+      const updateDoc = { $set: { admin_feedback: feedback } };
+      const updatedCourse = await courseCollection.updateOne(filter, updateDoc, options );
+      res.send(updatedCourse);
   });
   
     
