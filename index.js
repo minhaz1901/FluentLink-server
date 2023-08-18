@@ -48,7 +48,6 @@ async function run() {
 
     const usersCollection = client.db("FluentLink").collection("users");
     const courseCollection = client.db("FluentLink").collection("courses");
-    const selectedClassCollection = client.db("FluentLink").collection("selectedClasses");
 
 
     app.post('/jwt', (req, res) => {
@@ -70,6 +69,56 @@ async function run() {
       const result = await courseCollection.insertOne(NewCourse);
       res.send(result);
     })
+
+    
+    //instructors collection apis
+    // app.get('/instructors', async (req, res) => {
+  
+    //     const instructorData = await courseCollection.aggregate([
+    //       {
+    //         $group: {
+    //           _id: "$instructor_email",
+    //           instructor_name:{$push: "$instructor_name"},
+    //           numberOfCourses: { $sum: 1 },
+    //         },
+    //       }
+    //     ]);
+    //     console.log("abc",instructorData);
+    //     res.json(instructorData);
+
+    // });
+    app.get('/instructors', async (req, res) => {
+      try {
+          const instructorDataCursor = await courseCollection.aggregate([
+              {
+                  $group: {
+                      _id: {
+                          instructor_name: '$instructor_name',
+                          instructor_email: '$instructor_email',
+                      },
+                      numberOfCourses: { $sum: 1 },
+                  },
+              },
+              {
+                  $project: {
+                      _id: 0,
+                      instructor_name: '$_id.instructor_name',
+                      instructor_email: '$_id.instructor_email',
+                      numberOfCourses: 1,
+                  },
+              },
+          ]);
+  
+          const instructorDataArray = await instructorDataCursor.toArray();
+          console.log(instructorDataArray); // Check if you're getting the data in the console
+  
+          res.json(instructorDataArray);
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: 'Error retrieving instructor information' });
+      }
+  });
+  
 
 
     
