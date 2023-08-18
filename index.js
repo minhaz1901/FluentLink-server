@@ -342,51 +342,37 @@ async function run() {
 
     // allPendingClasses collection apis
     app.get('/allPendingClasses', async (req, res) => {
-      const query = {  $or: [
-        { isPending: true },
-        { isDenied: true }
-    ] }
+      const query = { isPending: true } 
         const result = await courseCollection.find(query).toArray();
         res.send(result);
       })
 
-      // approveClasses collection apis
-      app.patch('/approveCourse/:courseId', async (req, res) => {
-        const courseId = req.params.courseId;
+    // approveClasses collection apis
+    app.patch('/approveCourse/:courseId', async (req, res) => {
+      const courseId = req.params.courseId;
 
-          const filter = { _id: new ObjectId(courseId) };
-          // this option instructs the method to create a document if no documents match the filter
-          const options = { upsert: false };
-          // create a document that sets the plot of the movie
-          const updateDoc = { $set: { isPending: false, isDenied: false } };
-            const updatedCourse = await courseCollection.updateOne(
-              filter,
-              updateDoc,
-              options
-            );
-    
+        const filter = { _id: new ObjectId(courseId) };
+        // this option instructs the method to create a document if no documents match the filter
+        const options = { upsert: false };
+        // create a document that sets the plot of the movie
+        const updateDoc = { $set: { isPending: false, isDenied: false } };
+        const updatedCourse = await courseCollection.updateOne(filter, updateDoc, options );
+        res.send(updatedCourse);
+  
     });
 
     // denyClasses collection apis
-    app.put('/denyCourse/:courseId', async (req, res) => {
+    app.patch('/denyCourse/:courseId', async (req, res) => {
       const courseId = req.params.courseId;
-  
-      try {
-          const updatedCourse = await courseCollection.findOneAndUpdate(
-              { _id: ObjectId(courseId) },
-              { $set: { isPending: false, isDenied: true } },
-              { returnOriginal: false }
-          );
-  
-          if (updatedCourse) {
-              res.status(200).json({ message: 'Course denied successfully.' });
-          } else {
-              res.status(404).json({ error: 'Course not found.' });
-          }
-      } catch (error) {
-          console.error(error);
-          res.status(500).json({ error: 'Internal Server Error' });
-      }
+      const filter = { _id: new ObjectId(courseId) };
+      // this option instructs the method to create a document if no documents match the filter
+      const options = { upsert: false };
+      // create a document that sets the plot of the movie
+      const updateDoc = { $set: { isPending: false, isDenied: true } };
+      const updatedCourse = await courseCollection.updateOne(filter, updateDoc, options );
+      res.send(updatedCourse);
+
+
   });
   
     
