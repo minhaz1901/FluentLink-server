@@ -72,21 +72,6 @@ async function run() {
 
     
     //instructors collection apis
-    // app.get('/instructors', async (req, res) => {
-  
-    //     const instructorData = await courseCollection.aggregate([
-    //       {
-    //         $group: {
-    //           _id: "$instructor_email",
-    //           instructor_name:{$push: "$instructor_name"},
-    //           numberOfCourses: { $sum: 1 },
-    //         },
-    //       }
-    //     ]);
-    //     console.log("abc",instructorData);
-    //     res.json(instructorData);
-
-    // });
     app.get('/instructors', async (req, res) => {
       try {
           const instructorDataCursor = await courseCollection.aggregate([
@@ -95,6 +80,7 @@ async function run() {
                       _id: {
                           instructor_name: '$instructor_name',
                           instructor_email: '$instructor_email',
+                          instructor_photo: '$instructor_photo',
                       },
                       numberOfCourses: { $sum: 1 },
                   },
@@ -104,6 +90,7 @@ async function run() {
                       _id: 0,
                       instructor_name: '$_id.instructor_name',
                       instructor_email: '$_id.instructor_email',
+                      instructor_photo: '$_id.instructor_photo',
                       numberOfCourses: 1,
                   },
               },
