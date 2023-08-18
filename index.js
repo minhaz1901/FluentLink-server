@@ -306,7 +306,90 @@ async function run() {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
       }
-    });    
+    });
+
+
+
+    // MyPendingCourses collection apis allPendingClasses
+    app.get('/myPendingClasses/:tEmail', async (req, res) => {
+      try {
+        const tEmail = req.params.tEmail;
+        const query = {
+          instructor_email: tEmail,
+          $or: [
+              { isPending: true },
+              { isDenied: true }
+          ]
+      };
+        const result = await courseCollection.find(query).toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    // MyApprovedCourses collection apis allPendingClasses
+    app.get('/myApprovedClasses/:tEmail', async (req, res) => {
+      try {
+        const tEmail = req.params.tEmail;
+        const query = { instructor_email: tEmail, isPending: false, isDenied: false};
+        const result = await courseCollection.find(query).toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
+    // allPendingClasses collection apis
+    app.get('/allPendingClasses', async (req, res) => {
+      const query = {  $or: [
+        { isPending: true },
+        { isDenied: true }
+    ] }
+        const result = await courseCollection.find(query).toArray();
+        res.send(result);
+      })
+
+      // approveClasses collection apis
+      app.patch('/approveCourse/:courseId', async (req, res) => {
+        const courseId = req.params.courseId;
+
+          const filter = { _id: new ObjectId(courseId) };
+          // this option instructs the method to create a document if no documents match the filter
+          const options = { upsert: false };
+          // create a document that sets the plot of the movie
+          const updateDoc = { $set: { isPending: false, isDenied: false } };
+            const updatedCourse = await courseCollection.updateOne(
+              filter,
+              updateDoc,
+              options
+            );
+    
+    });
+
+    // denyClasses collection apis
+    app.put('/denyCourse/:courseId', async (req, res) => {
+      const courseId = req.params.courseId;
+  
+      try {
+          const updatedCourse = await courseCollection.findOneAndUpdate(
+              { _id: ObjectId(courseId) },
+              { $set: { isPending: false, isDenied: true } },
+              { returnOriginal: false }
+          );
+  
+          if (updatedCourse) {
+              res.status(200).json({ message: 'Course denied successfully.' });
+          } else {
+              res.status(404).json({ error: 'Course not found.' });
+          }
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ error: 'Internal Server Error' });
+      }
+  });
+  
+    
 
 
     // Send a ping to confirm a successful connection
