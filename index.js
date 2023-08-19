@@ -427,12 +427,13 @@ async function run() {
       try {
         const studentEmail = req.params.studentEmail;
         const query = { email: studentEmail };
-        const result = await courseCollection.find(query).toArray();
+        const result = await paymentCollection.find(query).toArray();
         res.json(result);
       } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });
       }
     });
+
     app.post('/payments', async (req, res) => {
       const payment = req.body;
       
