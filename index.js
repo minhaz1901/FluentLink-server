@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
-//const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -48,6 +48,7 @@ async function run() {
 
     const usersCollection = client.db("FluentLink").collection("users");
     const courseCollection = client.db("FluentLink").collection("courses");
+    const paymentCollection = client.db("FluentLink").collection("payments");
 
 
     app.post('/jwt', (req, res) => {
@@ -69,6 +70,14 @@ async function run() {
       const result = await courseCollection.insertOne(NewCourse);
       res.send(result);
     })
+
+    app.get('/courses/:courseId', async (req, res) => {
+      const courseId = req.params.courseId;
+      const filter = { _id: new ObjectId(courseId) };
+      const result = await courseCollection.findOne(filter);
+        res.send(result);
+      })
+
 
     
     //instructors collection apis
@@ -396,6 +405,71 @@ async function run() {
       res.send(updatedCourse);
   });
   
+    
+    // create payment intent
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+
+    // payment related api
+    app.get('/payments/:studentEmail', async (req, res) => {
+      try {
+        const studentEmail = req.params.studentEmail;
+        const query = { email: studentEmail };
+        const result = await courseCollection.find(query).toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      
+      // Get the courseId from the payment or however you are getting it
+      const courseName = payment.courseName; // Replace this with the correct way to get courseId
+      
+      try {
+        // Find the course using courseId
+        const filter = { name: courseName };
+        const course = await courseCollection.findOne(filter);
+    
+        if (!course) {
+          res.status(404).json({ message: 'Course not found' });
+          return;
+        }
+    
+        // Decrement available_seats by 1
+        const newAvailableSeats = course.available_seats - 1;
+    
+        // Update the course with new available_seats count
+        const updateResult = await courseCollection.updateOne(
+          { _id: course._id },
+          { $set: { available_seats: newAvailableSeats } }
+        );
+    
+        if (updateResult.modifiedCount === 1) {
+          // Insert the payment
+          const insertResult = await paymentCollection.insertOne(payment);
+          res.status(201).json({ message: 'Payment successful', insertResult });
+        } else {
+          res.status(500).json({ message: 'Failed to update course' });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred' });
+      }
+    });
     
 
 
