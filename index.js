@@ -7,7 +7,13 @@ const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+const corsConfig = {
+  origin: '',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+}
+app.use(cors(corsConfig))
+app.options("", cors(corsConfig))
 app.use(express.json());
 
 
@@ -42,9 +48,7 @@ const client = new MongoClient(uri, {
 });
 
 async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+
 
     const usersCollection = client.db("FluentLink").collection("users");
     const courseCollection = client.db("FluentLink").collection("courses");
@@ -154,7 +158,7 @@ async function run() {
           isAdmin: user?.role === 'admin',
           isInstructor: user?.role === 'instructor'
         };
-        console.log(result);
+        console.log(email,user,result);
     
         res.send(result);
     });
@@ -162,7 +166,7 @@ async function run() {
 
     app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: ObjectId(id) };
+      const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
           role: 'admin'
@@ -477,10 +481,7 @@ async function run() {
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    //await client.close();
-  }
+
 }
 run().catch(console.dir);
 
